@@ -1,5 +1,5 @@
 /**
- * Created by Administrator on 2017/1/9.
+ * Created by Administrator on 2017/1/10.
  */
 
 
@@ -13,24 +13,20 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
-
 import com.google.api.client.repackaged.org.apache.commons.codec.binary.Base64;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
 import com.google.api.services.gmail.model.MessagePart;
 import com.google.api.services.gmail.model.MessagePartBody;
-
 import com.google.api.services.gmail.GmailScopes;
 import com.google.api.services.gmail.model.*;
-import com.google.api.services.gmail.Gmail;
-import org.jsoup.Jsoup;
-
 import java.io.*;
-
+import java.util.*;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
-
 import java.util.List;
+import java.io.IOException;
+import javax.mail.MessagingException;
 
 
 public class Quickstart {
@@ -108,7 +104,7 @@ public class Quickstart {
                 .build();
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, MessagingException{
         // Build a new authorized API client service.
         if(args.length != 1 || args[0].indexOf("@") == -1){
             System.out.println("请输入正确的邮件地址！");
@@ -136,17 +132,24 @@ public class Quickstart {
             //print the title
             int i = 1;
             for (Message message : messages) {
+                Message mess1 = service.users().messages().get(user, message.getId()).setFormat("raw").execute();
                 Message mess = service.users().messages().get(user, message.getId()).execute();
                 Message mess2 = service.users().messages().get(user, message.getId()).setFormat("metadata").setMetadataHeaders(str).execute();
+
                 //输出邮件标题和内容
+
+
                 System.out.println("邮件" + i);
                 System.out.println("标题：" + mess2.getPayload().getHeaders().get(0).getValue());
                 System.out.println("邮件内容");
-                System.out.println(Jsoup.parse(mess.getSnippet()));
-                System.out.println();
+                StringBuilder stringBuilder = new StringBuilder();
+                getPlainTextFromMessageParts(mess.getPayload().getParts(), stringBuilder);
+                byte[] bodyBytes = Base64.decodeBase64(stringBuilder.toString());
+                String text = new String(bodyBytes, "UTF-8");
 
+                System.out.println(text);
 
-                String fileaddr = "F:\\IDEA\\" + user + "\\" ;
+                String fileaddr = "\\IDEA\\" + user + "\\" ;
                 List<MessagePart> parts = mess.getPayload().getParts();
                 for (MessagePart part : parts) {
                     if (part.getFilename() != null && part.getFilename().length() > 0) {
@@ -155,7 +158,8 @@ public class Quickstart {
                         MessagePartBody attachPart = service.users().messages().attachments().
                                 get(user, message.getId(),attId).execute();
 
-                        Base64 base64Url = new Base64(true);
+
+                        org.apache.commons.codec.binary.Base64 base64Url = new org.apache.commons.codec.binary.Base64(true);
                         byte[] fileByteArray = base64Url.decodeBase64(attachPart.getData());
                         File addr = new File(fileaddr);
                         if(!addr.exists()){
@@ -173,4 +177,15 @@ public class Quickstart {
         }
     }
 
+    private static void getPlainTextFromMessageParts(List<MessagePart> messageParts, StringBuilder stringBuilder) {
+        for (MessagePart messagePart : messageParts) {
+            if (messagePart.getMimeType().equals("text/plain")) {
+                stringBuilder.append(messagePart.getBody().getData());
+            }
+
+            if (messagePart.getParts() != null) {
+                getPlainTextFromMessageParts(messagePart.getParts(), stringBuilder);
+            }
+        }
+    }
 }
