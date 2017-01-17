@@ -132,7 +132,6 @@ public class Quickstart {
             //print the title
             int i = 1;
             for (Message message : messages) {
-                Message mess1 = service.users().messages().get(user, message.getId()).setFormat("raw").execute();
                 Message mess = service.users().messages().get(user, message.getId()).execute();
                 Message mess2 = service.users().messages().get(user, message.getId()).setFormat("metadata").setMetadataHeaders(str).execute();
 
@@ -143,14 +142,16 @@ public class Quickstart {
                 System.out.println("标题：" + mess2.getPayload().getHeaders().get(0).getValue());
                 System.out.println("邮件内容");
                 StringBuilder stringBuilder = new StringBuilder();
-                getPlainTextFromMessageParts(mess.getPayload().getParts(), stringBuilder);
+                List<MessagePart> parts = mess.getPayload().getParts();
+
+                getPlainTextFromMessageParts(parts, stringBuilder);
                 byte[] bodyBytes = Base64.decodeBase64(stringBuilder.toString());
                 String text = new String(bodyBytes, "UTF-8");
 
                 System.out.println(text);
 
                 String fileaddr = "\\IDEA\\" + user + "\\" ;
-                List<MessagePart> parts = mess.getPayload().getParts();
+
                 for (MessagePart part : parts) {
                     if (part.getFilename() != null && part.getFilename().length() > 0) {
                         String filename = part.getFilename();
